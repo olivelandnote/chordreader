@@ -4,325 +4,183 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Harmony Reading</title>
+
 <style>
-:root{
-  --orange:#E8690A;
-  --ink:#1E2330;
-  --soft:#F4F5F8;
-  --card:#FFFFFF;
-  --grey:#5A6478;
-  --line:#2B2F3A;
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f5f8;
+  text-align: center;
+  padding: 20px;
 }
-*{box-sizing:border-box}
-body{
-  margin:0;
-  min-height:100vh;
-  font-family:Arial, Helvetica, sans-serif;
-  background:var(--soft);
-  color:var(--ink);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:24px 14px 40px;
+canvas {
+  background: white;
+  border: 1px solid #ccc;
+  margin-top: 20px;
 }
-header{text-align:center;margin-bottom:18px}
-.logo{font-size:32px;color:var(--orange)}
-h1{margin:4px 0 4px;font-size:30px;letter-spacing:.04em}
-.subtitle{margin:0;color:var(--grey);font-size:12px;letter-spacing:.16em;text-transform:uppercase}
-.app{
-  width:100%;
-  max-width:680px;
-  display:flex;
-  flex-direction:column;
-  gap:14px;
-  align-items:center;
+button {
+  margin: 10px;
+  padding: 12px 18px;
+  font-size: 14px;
+  cursor: pointer;
 }
-.panel{
-  width:100%;
-  background:var(--card);
-  border:1px solid #E3E6EC;
-  border-radius:14px;
-  box-shadow:0 6px 24px rgba(30,35,48,.08);
+.levels button.active {
+  background: #E8690A;
+  color: white;
 }
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:12px 16px;
-  gap:8px;
-  font-size:13px;
-  color:var(--grey);
-}
-.badge{
-  font-weight:bold;
-  color:var(--orange);
-}
-.canvas-wrap{
-  padding:18px 8px;
-  display:flex;
-  justify-content:center;
-  overflow:hidden;
-}
-canvas{
-  width:100%;
-  max-width:620px;
-  height:auto;
-  background:white;
-}
-.answer{
-  text-align:center;
-  padding:18px 14px;
-}
-.answer .label{
-  font-size:11px;
-  text-transform:uppercase;
-  letter-spacing:.18em;
-  color:var(--grey);
-  margin-bottom:6px;
-}
-#answerText{
-  font-size:30px;
-  font-weight:bold;
-  min-height:38px;
-}
-.controls{
-  display:flex;
-  gap:10px;
-  width:100%;
-}
-button{
-  flex:1;
-  border:none;
-  border-radius:12px;
-  padding:14px 12px;
-  font-size:14px;
-  font-weight:bold;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  cursor:pointer;
-}
-#revealBtn{
-  background:#fff2e8;
-  color:var(--orange);
-  border:1px solid #F5A05A;
-}
-#nextBtn{
-  background:var(--ink);
-  color:white;
-}
-footer{
-  margin-top:30px;
-  color:#A8AFBA;
-  font-size:11px;
-  letter-spacing:.14em;
-  text-transform:uppercase;
-  text-align:center;
-}
-@media(max-width:480px){
-  h1{font-size:24px}
-  .controls{flex-direction:column}
+.stats {
+  margin-top: 10px;
 }
 </style>
 </head>
 
 <body>
-<header>
-  <div class="logo">♩</div>
-  <h1>Harmony Reading</h1>
-  <p class="subtitle">Grand Staff · Whole Notes · Real Triads</p>
-</header>
 
-<main class="app">
-  <section class="panel topbar">
-    <div>Question <span class="badge" id="qNum">1</span></div>
-    <div>Find the chord</div>
-  </section>
+<h1>Harmony Reading</h1>
 
-  <section class="panel canvas-wrap">
-    <canvas id="staffCanvas" width="620" height="280"></canvas>
-  </section>
+<div class="levels">
+  <button onclick="setLevel(1)" id="l1" class="active">Level 1</button>
+  <button onclick="setLevel(2)" id="l2">Level 2</button>
+  <button onclick="setLevel(3)" id="l3">Level 3</button>
+</div>
 
-  <section class="panel answer">
-    <div class="label">Answer</div>
-    <div id="answerText">?</div>
-  </section>
+<div class="stats">
+  Question: <span id="qNum">1</span> |
+  Timer: <span id="timer">0:00</span> |
+  Level: <span id="levelText">1</span>
+</div>
 
-  <section class="controls">
-    <button id="revealBtn">Reveal</button>
-    <button id="nextBtn">Next →</button>
-  </section>
-</main>
+<canvas id="staffCanvas" width="600" height="260"></canvas>
 
-<footer>OliveLand Piano Studio · Harmony Reader</footer>
+<h2 id="answer">?</h2>
+
+<button onclick="reveal()">Reveal</button>
+<button onclick="nextQ()">Next</button>
 
 <script>
-"use strict";
+// ===== NOTES =====
+const TN = { C4:0, D4:1, E4:2, F4:3, G4:4, A4:5, B4:6, C5:7, D5:8 };
+const BN = { E2:0, F2:1, G2:2, A2:3, B2:4, C3:5, D3:6, E3:7, F3:8, G3:9 };
 
-/*
-  Simple stable single-file version.
-  No external JS/CSS. Perfect for GitHub Pages.
-  Whole notes only, no stems.
-*/
-
-/* Staff slot maps:
-   slot 0 = ledger line below
-   slot 2 = bottom line
-   slot 10 = top line
-   slot 12 = ledger line above
-*/
-const TREBLE = {
-  C4:0, D4:1, E4:2, F4:3, G4:4, A4:5, B4:6,
-  C5:7, D5:8, E5:9, F5:10
-};
-
-const BASS = {
-  E2:0, F2:1, G2:2, A2:3, B2:4,
-  C3:5, D3:6, E3:7, F3:8, G3:9, A3:10, B3:11, C4:12
-};
-
-/* One chord per question, spread across grand staff */
+// ===== CHORDS =====
 const CHORDS = [
-  { name:"C Major", treble:["E4","G4"], bass:["C3","G3"] },
-  { name:"G Major", treble:["G4","B4"], bass:["G2","D3"] },
-  { name:"F Major", treble:["F4","A4"], bass:["F2","C3"] },
-  { name:"A Minor", treble:["A4","C5"], bass:["A2","E3"] },
-  { name:"E Minor", treble:["E4","G4"], bass:["E2","B2"] },
-  { name:"D Minor", treble:["F4","A4"], bass:["D3","A3"] }
+  { level:1, name:"C Major", t:["E4","G4"], b:["C3","G3"] },
+  { level:1, name:"A Minor", t:["A4","C5"], b:["A2","E3"] },
+
+  { level:2, name:"G Major", t:["G4","B4"], b:["G2","D3"] },
+  { level:2, name:"E Minor", t:["E4","G4"], b:["E2","B2"] },
+  { level:2, name:"F Major", t:["F4","A4"], b:["F2","C3"] },
+
+  { level:3, name:"D Major", t:["D4","A4"], b:["D3","A3"] },
+  { level:3, name:"B Minor", t:["D4","F4"], b:["B2","F3"] }
 ];
 
-let current = null;
-let qNumber = 1;
+let state = {
+  level:1,
+  q:null,
+  qNum:1,
+  timer:0,
+  timerId:null
+};
 
-const canvas = document.getElementById("staffCanvas");
-const ctx = canvas.getContext("2d");
-const answerText = document.getElementById("answerText");
-const qNum = document.getElementById("qNum");
-
-function pick(arr){
-  return arr[Math.floor(Math.random() * arr.length)];
+// ===== TIMER =====
+function startTimer(){
+  stopTimer();
+  state.timer = 0;
+  state.timerId = setInterval(()=>{
+    state.timer++;
+    const m = Math.floor(state.timer/60);
+    const s = state.timer % 60;
+    document.getElementById("timer").innerText =
+      m + ":" + (s<10?"0":"") + s;
+  },1000);
 }
 
-function newQuestion(){
-  current = pick(CHORDS);
-  answerText.textContent = "?";
-  qNum.textContent = qNumber;
+function stopTimer(){
+  if(state.timerId) clearInterval(state.timerId);
+}
+
+// ===== LOGIC =====
+function pool(){
+  return CHORDS.filter(c=>c.level===state.level);
+}
+
+function pick(arr){
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+function nextQ(){
+  state.qNum++;
+  newQ();
+}
+
+function newQ(){
+  state.q = pick(pool());
+  document.getElementById("answer").innerText = "?";
+  document.getElementById("qNum").innerText = state.qNum;
+  document.getElementById("levelText").innerText = state.level;
   draw();
+  startTimer();
 }
 
 function reveal(){
-  answerText.textContent = current.name;
+  document.getElementById("answer").innerText = state.q.name;
+  stopTimer();
 }
 
-function next(){
-  qNumber++;
-  newQuestion();
+function setLevel(l){
+  state.level = l;
+  state.qNum = 1;
+
+  document.querySelectorAll(".levels button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("l"+l).classList.add("active");
+
+  newQ();
 }
 
-function yFromSlot(staffTop, slot){
-  return staffTop + (10 - slot) * 5;
+// ===== DRAW =====
+function y(top, slot){
+  return top + (10-slot)*5;
 }
 
-function drawStaff(staffTop){
-  ctx.strokeStyle = "#2B2F3A";
-  ctx.lineWidth = 1.3;
-  for(let i=0; i<5; i++){
-    const y = staffTop + i * 10;
+function staff(ctx, top){
+  for(let i=0;i<5;i++){
     ctx.beginPath();
-    ctx.moveTo(80, y);
-    ctx.lineTo(580, y);
+    ctx.moveTo(50, top+i*10);
+    ctx.lineTo(550, top+i*10);
     ctx.stroke();
   }
 }
 
-function drawLedger(x, y){
-  ctx.strokeStyle = "#2B2F3A";
-  ctx.lineWidth = 1.2;
+function note(ctx,x,y){
   ctx.beginPath();
-  ctx.moveTo(x - 16, y);
-  ctx.lineTo(x + 16, y);
+  ctx.ellipse(x,y,8,5,0,0,Math.PI*2);
   ctx.stroke();
-}
-
-function drawWholeNote(x, y, color){
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.ellipse(x, y, 10, 7, -0.25, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#FFFFFF";
-  ctx.beginPath();
-  ctx.ellipse(x, y, 5, 3.8, -0.25, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawChord(notes, map, staffTop, color){
-  const x = 330;
-  notes.forEach(note => {
-    const slot = map[note];
-    const y = yFromSlot(staffTop, slot);
-    if(slot === 0 || slot === 12) drawLedger(x, y);
-    drawWholeNote(x, y, color);
-  });
 }
 
 function draw(){
-  ctx.clearRect(0,0,620,280);
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0,0,620,280);
+  const c=document.getElementById("staffCanvas");
+  const ctx=c.getContext("2d");
 
-  const trebleTop = 40;
-  const bassTop = 160;
+  ctx.clearRect(0,0,600,260);
 
-  drawStaff(trebleTop);
-  drawStaff(bassTop);
+  const tTop=40;
+  const bTop=140;
 
-  // brace
-  ctx.fillStyle = "#2B2F3A";
-  ctx.font = "bold 92px serif";
-  ctx.textBaseline = "top";
-  ctx.fillText("{", 8, 30);
+  staff(ctx,tTop);
+  staff(ctx,bTop);
 
-  // barlines
-  ctx.strokeStyle = "#2B2F3A";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(80, trebleTop);
-  ctx.lineTo(80, bassTop + 40);
-  ctx.stroke();
+  state.q.t.forEach(n=>{
+    note(ctx,300,y(tTop,TN[n]));
+  });
 
-  ctx.beginPath();
-  ctx.moveTo(580, trebleTop);
-  ctx.lineTo(580, bassTop + 40);
-  ctx.stroke();
-
-  // clefs
-  ctx.fillStyle = "#2B2F3A";
-  ctx.font = "bold 52px serif";
-  ctx.textBaseline = "middle";
-  ctx.fillText("𝄞", 28, trebleTop + 23);
-
-  ctx.font = "bold 38px serif";
-  ctx.fillText("𝄢", 32, bassTop + 16);
-
-  // notes
-  drawChord(current.treble, TREBLE, trebleTop, "#E8690A");
-  drawChord(current.bass, BASS, bassTop, "#5A6478");
+  state.q.b.forEach(n=>{
+    note(ctx,300,y(bTop,BN[n]));
+  });
 }
 
-document.getElementById("revealBtn").addEventListener("click", reveal);
-document.getElementById("nextBtn").addEventListener("click", next);
-
-document.addEventListener("keydown", function(e){
-  if(e.key === " "){
-    e.preventDefault();
-    reveal();
-  }
-  if(e.key === "Enter" || e.key === "ArrowRight"){
-    next();
-  }
-});
-
-newQuestion();
+// ===== INIT =====
+newQ();
 </script>
+
 </body>
 </html>
