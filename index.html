@@ -1,186 +1,523 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Harmony Reading</title>
-
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;500;700&family=Josefin+Sans:wght@200;400;600&display=swap" rel="stylesheet" />
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f5f8;
-  text-align: center;
-  padding: 20px;
+:root{
+  --or:#E8690A;--or2:#F5A05A;--or-bg:rgba(232,105,10,0.10);
+  --sg1:#EDF0F4;--sg2:#C8CADA;--sg3:#9DA8B5;--sg4:#5A6478;
+  --ink:#1E2330;--bg:#F4F5F8;--card:#FFFFFF;
+  --rad:12px;--sh:0 4px 28px rgba(30,35,48,0.09);
+  --sh2:0 8px 36px rgba(232,105,10,0.20);
+  --ease:0.22s cubic-bezier(.4,0,.2,1);
 }
-canvas {
-  background: white;
-  border: 1px solid #ccc;
-  margin-top: 20px;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Josefin Sans',sans-serif;background:var(--bg);color:var(--ink);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 16px 56px;
 }
-button {
-  margin: 10px;
-  padding: 12px 18px;
-  font-size: 14px;
-  cursor: pointer;
+header{text-align:center;padding:36px 0 22px;width:100%;max-width:640px}
+.logo{font-size:1.9rem;color:var(--or);line-height:1;margin-bottom:6px}
+h1{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:2.1rem;letter-spacing:.05em;color:var(--ink)}
+.tagline{font-size:.62rem;font-weight:400;letter-spacing:.22em;text-transform:uppercase;color:var(--sg3);margin-top:5px}
+main{width:100%;max-width:640px;display:flex;flex-direction:column;align-items:center;gap:16px}
+/* Level bar */
+.level-bar{display:flex;gap:8px;width:100%}
+.lvl-btn{
+  flex:1;padding:9px 4px;border:1.5px solid var(--sg2);border-radius:8px;
+  background:var(--card);font-family:'Josefin Sans',sans-serif;
+  font-size:.64rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--sg4);cursor:pointer;
+  transition:background var(--ease),border-color var(--ease),color var(--ease),box-shadow var(--ease);
 }
-.levels button.active {
-  background: #E8690A;
-  color: white;
+.lvl-btn:hover{border-color:var(--or2);color:var(--or)}
+.lvl-btn.active{background:var(--or);border-color:var(--or);color:#fff;box-shadow:0 3px 14px rgba(232,105,10,.30)}
+/* Stats */
+.stats-bar{
+  display:flex;justify-content:space-between;width:100%;padding:10px 18px;
+  background:var(--card);border-radius:var(--rad);border:1px solid var(--sg1);box-shadow:var(--sh);
 }
-.stats {
-  margin-top: 10px;
+.stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+.stat-label{font-size:.57rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--sg3)}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:1.35rem;font-weight:700;color:var(--ink)}
+.stat-value.orange{color:var(--or)}
+.timer-warn{color:#d94f0a !important}
+/* Key sig badge */
+.key-badge{
+  display:none;align-items:center;gap:8px;padding:6px 16px;
+  background:var(--card);border-radius:8px;border:1px solid var(--sg1);
+  box-shadow:var(--sh);font-size:.65rem;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--sg4);
+}
+.key-badge span{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:700;color:var(--or)}
+/* Canvas */
+.score-wrap{
+  background:var(--card);border-radius:var(--rad);box-shadow:var(--sh);
+  border:1px solid var(--sg1);padding:20px 8px;width:100%;
+  display:flex;justify-content:center;transition:box-shadow var(--ease);overflow:hidden;
+}
+.score-wrap:hover{box-shadow:var(--sh2)}
+#staffCanvas{display:block;max-width:100%;height:auto}
+/* Chord label */
+.label-wrap{
+  width:100%;background:var(--card);border-radius:var(--rad);
+  border:1px solid var(--sg1);box-shadow:var(--sh);
+  display:flex;align-items:center;justify-content:center;padding:16px 20px;gap:14px;
+}
+.dot-or{width:10px;height:10px;border-radius:50%;background:var(--or);flex-shrink:0}
+.lbl-meta{text-align:center}
+.lbl-staff{font-size:.58rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--sg3);margin-bottom:2px}
+.lbl-chord{font-family:'Cormorant Garamond',serif;font-size:1.45rem;font-weight:700;color:var(--ink);min-height:1.7rem}
+.lbl-chord.hidden{opacity:0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.lbl-chord.revealed{animation:fadeUp .28s ease forwards}
+/* Buttons */
+.controls{display:flex;gap:10px;width:100%}
+.btn{
+  flex:1;padding:13px 16px;border:none;border-radius:var(--rad);
+  font-family:'Josefin Sans',sans-serif;font-size:.7rem;font-weight:600;
+  letter-spacing:.13em;text-transform:uppercase;cursor:pointer;
+  transition:background var(--ease),transform var(--ease),box-shadow var(--ease);outline:none;
+}
+.btn:active{transform:scale(.97)}
+.btn-reveal{background:var(--or-bg);color:var(--or);border:1.5px solid var(--or2)}
+.btn-reveal:hover{background:var(--or);color:#fff;box-shadow:0 4px 18px rgba(232,105,10,.28)}
+.btn-reveal:disabled{opacity:.4;pointer-events:none}
+.btn-pass{background:rgba(90,100,120,.10);color:var(--sg4);border:1.5px solid var(--sg2)}
+.btn-pass:hover{background:var(--sg4);color:#fff;box-shadow:0 4px 18px rgba(30,35,48,.18)}
+.btn-pass:disabled{opacity:.4;pointer-events:none}
+.btn-next{background:var(--ink);color:var(--sg1)}
+.btn-next:hover{background:var(--sg4);box-shadow:0 4px 18px rgba(30,35,48,.22)}
+.pass-badge{
+  display:none;font-size:.6rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
+  background:rgba(90,100,120,.12);color:var(--sg4);border:1px solid var(--sg2);
+  border-radius:6px;padding:5px 14px;align-self:center;
+}
+.pass-badge.visible{display:inline-block}
+footer{margin-top:auto;padding-top:36px;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--sg2);text-align:center}
+@media(max-width:480px){
+  h1{font-size:1.65rem}.btn{font-size:.62rem;padding:11px 10px}.stat-value{font-size:1.1rem}
 }
 </style>
 </head>
-
 <body>
-
-<h1>Harmony Reading</h1>
-
-<div class="levels">
-  <button onclick="setLevel(1)" id="l1" class="active">Level 1</button>
-  <button onclick="setLevel(2)" id="l2">Level 2</button>
-  <button onclick="setLevel(3)" id="l3">Level 3</button>
-</div>
-
-<div class="stats">
-  Question: <span id="qNum">1</span> |
-  Timer: <span id="timer">0:00</span> |
-  Level: <span id="levelText">1</span>
-</div>
-
-<canvas id="staffCanvas" width="600" height="260"></canvas>
-
-<h2 id="answer">?</h2>
-
-<button onclick="reveal()">Reveal</button>
-<button onclick="nextQ()">Next</button>
+<header>
+  <div class="logo">♩</div>
+  <h1>Harmony Reading</h1>
+  <p class="tagline">Grand Staff · Chord Identification</p>
+</header>
+<main>
+  <div class="level-bar" role="group" aria-label="Difficulty level">
+    <button class="lvl-btn active" data-level="1">Level 1 · No Key Sig</button>
+    <button class="lvl-btn"        data-level="2">Level 2 · 1♯ / 1♭</button>
+    <button class="lvl-btn"        data-level="3">Level 3 · 2♯ / 2♭</button>
+  </div>
+  <div class="stats-bar">
+    <div class="stat"><span class="stat-label">Question</span><span class="stat-value" id="statQ">1</span></div>
+    <div class="stat"><span class="stat-label">Timer</span><span class="stat-value orange" id="statTimer">0:00</span></div>
+    <div class="stat"><span class="stat-label">Passed</span><span class="stat-value" id="statPass">0</span></div>
+    <div class="stat"><span class="stat-label">Level</span><span class="stat-value orange" id="statLevel">1</span></div>
+  </div>
+  <div class="key-badge" id="keyBadge">Key: <span id="keyName"></span></div>
+  <div class="score-wrap">
+    <canvas id="staffCanvas" width="600" height="276"></canvas>
+  </div>
+  <div class="label-wrap" aria-live="polite">
+    <span class="dot-or"></span>
+    <div class="lbl-meta">
+      <div class="lbl-staff">Chord</div>
+      <div class="lbl-chord hidden" id="lblChord">—</div>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn btn-reveal" id="btnReveal">Reveal</button>
+    <button class="btn btn-pass"   id="btnPass" disabled>✓ Pass</button>
+    <button class="btn btn-next"   id="btnNext">Next →</button>
+  </div>
+  <span class="pass-badge" id="passBadge">Teacher Approved ✓</span>
+</main>
+<footer>Grand staff · Whole notes · Real triads · Key signatures by level</footer>
 
 <script>
-// ===== NOTES =====
-const TN = { C4:0, D4:1, E4:2, F4:3, G4:4, A4:5, B4:6, C5:7, D5:8 };
-const BN = { E2:0, F2:1, G2:2, A2:3, B2:4, C3:5, D3:6, E3:7, F3:8, G3:9 };
+/* ============================================================
+   HARMONY READING
+   One chord per question — voiced across BOTH staves.
+   Bass = lower notes of the chord (root, 5th in low register)
+   Treble = upper notes (3rd, 5th, or octave in higher register)
+   Key signatures appear from level 2 onward.
+============================================================ */
 
-// ===== CHORDS =====
-const CHORDS = [
-  { level:1, name:"C Major", t:["E4","G4"], b:["C3","G3"] },
-  { level:1, name:"A Minor", t:["A4","C5"], b:["A2","E3"] },
+/* ── NOTE SLOT MAPS ─────────────────────────────────────────
+   Slot = staff position counted from bottom line upward.
+   Bottom line = slot 2, top line = slot 10.
+   Ledger below = slot 0, ledger above = slot 12.
+   Odd slots = spaces; even slots = lines.
 
-  { level:2, name:"G Major", t:["G4","B4"], b:["G2","D3"] },
-  { level:2, name:"E Minor", t:["E4","G4"], b:["E2","B2"] },
-  { level:2, name:"F Major", t:["F4","A4"], b:["F2","C3"] },
+   TREBLE (G4 on line 2 = slot 4):
+     C4=0 D4=1 E4=2 F4=3 G4=4 A4=5 B4=6
+     C5=7 D5=8 E5=9 F5=10
 
-  { level:3, name:"D Major", t:["D4","A4"], b:["D3","A3"] },
-  { level:3, name:"B Minor", t:["D4","F4"], b:["B2","F3"] }
-];
-
-let state = {
-  level:1,
-  q:null,
-  qNum:1,
-  timer:0,
-  timerId:null
+   BASS (F3 on line 4 = slot 8):
+     E2=0 F2=1 G2=2 A2=3 B2=4
+     C3=5 D3=6 E3=7 F3=8 G3=9 A3=10 B3=11 C4=12
+*/
+const TN = {
+  C4:0, D4:1, E4:2, F4:3, G4:4, A4:5, B4:6,
+  C5:7, D5:8, E5:9, F5:10
+};
+const BN = {
+  E2:0, F2:1, G2:2, A2:3, B2:4,
+  C3:5, D3:6, E3:7, F3:8, G3:9, A3:10, B3:11, C4:12
 };
 
-// ===== TIMER =====
-function startTimer(){
-  stopTimer();
-  state.timer = 0;
-  state.timerId = setInterval(()=>{
-    state.timer++;
-    const m = Math.floor(state.timer/60);
-    const s = state.timer % 60;
-    document.getElementById("timer").innerText =
-      m + ":" + (s<10?"0":"") + s;
-  },1000);
+/* ── KEY SIGNATURES ─────────────────────────────────────────
+   Standard order: sharps = F C G D, flats = B E A D
+   Slot positions for accidentals on each staff.
+*/
+const KEY_SIGS = [
+  { name:"C Major",  sharps:[], flats:[], level:1 },
+  { name:"G Major",  sharps:["F"], flats:[], level:2 },
+  { name:"F Major",  sharps:[], flats:["B"], level:2 },
+  { name:"D Major",  sharps:["F","C"], flats:[], level:3 },
+  { name:"B♭ Major", sharps:[], flats:["B","E"], level:3 },
+];
+
+// Slots where each accidental glyph is drawn on treble staff
+const T_SHARP = { F:10, C:7, G:11, D:8 };
+const T_FLAT  = { B:6,  E:9, A:5,  D:8 };
+// … and on bass staff
+const B_SHARP = { F:8,  C:5, G:9,  D:6 };
+const B_FLAT  = { B:4,  E:7, A:3,  D:6 };
+
+/* ── CHORD DATABASE ─────────────────────────────────────────
+   Each chord has a list of grand-staff voicings.
+   voicing.t = two note keys for treble staff
+   voicing.b = two note keys for bass staff
+   All notes belong to the named triad.
+   Voicings are inspired by Bach chorale style:
+     Bass has root or fifth in low register;
+     Treble has upper structure (third, fifth, octave).
+*/
+const CHORDS = [
+
+  // ── Level 1 (C major key — no accidentals) ──────────────
+
+  { name:"C Major", level:1, voicings:[
+    { t:["E4","G4"], b:["C3","G3"] },
+    { t:["G4","C5"], b:["C3","E3"] },
+    { t:["C5","E5"], b:["G2","C3"] },
+    { t:["E4","C5"], b:["G3","C4"] },
+  ]},
+  { name:"A Minor", level:1, voicings:[
+    { t:["C5","E5"], b:["A2","E3"] },
+    { t:["E4","A4"], b:["A3","C3"] },
+    { t:["A4","C5"], b:["E3","A3"] },
+    { t:["C4","E4"], b:["A2","C3"] },
+  ]},
+  { name:"G Major", level:1, voicings:[
+    { t:["G4","B4"], b:["G2","D3"] },
+    { t:["D5","G4"], b:["G3","B3"] },
+    { t:["B4","D5"], b:["D3","G3"] },
+    { t:["G4","D5"], b:["G2","B2"] },
+  ]},
+  { name:"E Minor", level:1, voicings:[
+    { t:["E4","G4"], b:["E3","B3"] },
+    { t:["G4","B4"], b:["E2","B2"] },
+    { t:["B4","E5"], b:["E3","G3"] },
+    { t:["E4","B4"], b:["G2","E3"] },
+  ]},
+
+  // ── Level 2 (adds G major key = 1♯, F major key = 1♭) ──
+
+  { name:"F Major", level:2, voicings:[
+    { t:["F4","A4"], b:["F2","C3"] },
+    { t:["A4","C5"], b:["F3","A3"] },
+    { t:["C5","F5"], b:["F2","A2"] },
+    { t:["F4","C5"], b:["C3","F3"] },
+  ]},
+  { name:"D Minor", level:2, voicings:[
+    { t:["F4","A4"], b:["D3","A3"] },
+    { t:["D4","F4"], b:["D3","F3"] },
+    { t:["A4","D5"], b:["F3","D3"] },
+    { t:["F4","D5"], b:["A2","D3"] },
+  ]},
+  { name:"B♭ Major", level:2, voicings:[
+    { t:["D4","F4"], b:["B2","F3"] },  // B2 = Bb2
+    { t:["F4","B4"], b:["B2","D3"] },  // B4 = Bb4
+    { t:["D5","F5"], b:["B3","F3"] },  // B3 = Bb3
+    { t:["B4","D5"], b:["F2","B2"] },
+  ]},
+  { name:"G Minor", level:2, voicings:[
+    { t:["G4","B4"], b:["G2","D3"] },  // B4 = Bb4
+    { t:["D5","G4"], b:["G3","B3"] },  // B3 = Bb3
+    { t:["B4","D5"], b:["G2","B2"] },
+    { t:["G4","D5"], b:["D3","G3"] },
+  ]},
+
+  // ── Level 3 (adds D major = 2♯, Bb major = 2♭) ─────────
+
+  { name:"D Major", level:3, voicings:[
+    { t:["D4","A4"], b:["D3","A3"] },
+    { t:["F4","A4"], b:["D3","F3"] },  // F = F#
+    { t:["A4","D5"], b:["F3","D3"] },
+    { t:["D5","F5"], b:["A3","D3"] },
+  ]},
+  { name:"B Minor", level:3, voicings:[
+    { t:["D4","F4"], b:["B2","F3"] },  // F = F#
+    { t:["F4","B4"], b:["B2","D3"] },
+    { t:["B4","D5"], b:["D3","F3"] },
+    { t:["D5","F5"], b:["B3","D3"] },
+  ]},
+  { name:"A Major", level:3, voicings:[
+    { t:["C4","E4"], b:["A2","E3"] },  // C = C#
+    { t:["E4","A4"], b:["A3","C3"] },
+    { t:["A4","C5"], b:["E3","A3"] },  // C5 = C#5
+    { t:["C5","E5"], b:["A2","A3"] },
+  ]},
+  { name:"E♭ Major", level:3, voicings:[
+    { t:["E4","G4"], b:["E3","B2"] },  // E=Eb, B=Bb
+    { t:["G4","B4"], b:["E2","G2"] },  // B=Bb, E=Eb
+    { t:["B4","E5"], b:["G3","E3"] },  // B=Bb, E=Eb
+    { t:["E4","B4"], b:["E2","B2"] },
+  ]},
+  { name:"C Minor", level:3, voicings:[
+    { t:["E4","G4"], b:["C3","G3"] },  // E=Eb
+    { t:["G4","C5"], b:["C3","E3"] },  // E=Eb
+    { t:["C5","E5"], b:["G2","C3"] },  // E=Eb
+    { t:["E4","C5"], b:["G3","C4"] },
+  ]},
+];
+
+// Pitch classes per chord (letter names only — accidentals handled by key sig)
+const CHORD_PCS = {
+  "C Major": ["C","E","G"], "G Major": ["G","B","D"],
+  "F Major": ["F","A","C"], "D Major": ["D","F","A"],
+  "A Major": ["A","C","E"], "E Major": ["E","G","B"],
+  "B♭ Major":["B","D","F"], "E♭ Major":["E","G","B"],
+  "A Minor": ["A","C","E"], "E Minor": ["E","G","B"],
+  "D Minor": ["D","F","A"], "G Minor": ["G","B","D"],
+  "B Minor": ["B","D","F"], "C Minor": ["C","E","G"],
+};
+
+// Which key sig to display for each chord
+const CHORD_KEY = {
+  "C Major":"C Major", "A Minor":"C Major",
+  "G Major":"G Major", "E Minor":"G Major",
+  "F Major":"F Major", "D Minor":"F Major", "B♭ Major":"B♭ Major", "G Minor":"B♭ Major",
+  "D Major":"D Major", "B Minor":"D Major", "A Major":"D Major",
+  "E♭ Major":"B♭ Major", "C Minor":"B♭ Major",
+};
+
+/* ── GENERATOR ───────────────────────────────────────────── */
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+function pc(k){ return k.replace(/\d/g,"") }
+
+function filterV(voicings){
+  return voicings.filter(v => v.t.every(k=>k in TN) && v.b.every(k=>k in BN));
 }
 
-function stopTimer(){
-  if(state.timerId) clearInterval(state.timerId);
+function poolFor(level){
+  return CHORDS
+    .filter(c => c.level <= level)
+    .map(c =>({...c, voicings: filterV(c.voicings)}))
+    .filter(c => c.voicings.length > 0);
 }
 
-// ===== LOGIC =====
-function pool(){
-  return CHORDS.filter(c=>c.level===state.level);
+function validate(chordName, tv, bv){
+  const pcs = CHORD_PCS[chordName];
+  return pcs && [...tv,...bv].every(k => pcs.includes(pc(k)));
 }
 
-function pick(arr){
-  return arr[Math.floor(Math.random()*arr.length)];
+function keyFor(chordName, level){
+  const name = CHORD_KEY[chordName] || "C Major";
+  const ks = KEY_SIGS.find(k => k.name===name);
+  if(!ks || ks.level > level) return KEY_SIGS[0];
+  return ks;
 }
 
-function nextQ(){
-  state.qNum++;
-  newQ();
+function safeGen(level, tries=40){
+  const pool = poolFor(level);
+  for(let i=0;i<tries;i++){
+    const chord = pick(pool);
+    const v = pick(chord.voicings);
+    if(validate(chord.name, v.t, v.b)){
+      return { chord, voicing:v, keySig: keyFor(chord.name, level) };
+    }
+  }
+  throw new Error("Could not generate valid question");
 }
 
-function newQ(){
-  state.q = pick(pool());
-  document.getElementById("answer").innerText = "?";
-  document.getElementById("qNum").innerText = state.qNum;
-  document.getElementById("levelText").innerText = state.level;
-  draw();
-  startTimer();
-}
+/* ── RENDERER ────────────────────────────────────────────── */
 
-function reveal(){
-  document.getElementById("answer").innerText = state.q.name;
-  stopTimer();
-}
+const CW=600, CH=276, ML=88, MR=28;
+const SW=CW-ML-MR, TTOP=22, BTOP=156, LG=10;
+const CX=ML+SW*0.45;
+const NRX=9,NRY=6.5,NHX=4.8,NHY=3.6;
+const C_LINE="#2B2F3A", C_OR="#E8690A", C_SG="#5A6478";
 
-function setLevel(l){
-  state.level = l;
-  state.qNum = 1;
+function slotY(top,slot){ return top+(10-slot)*(LG/2) }
 
-  document.querySelectorAll(".levels button").forEach(b=>b.classList.remove("active"));
-  document.getElementById("l"+l).classList.add("active");
-
-  newQ();
-}
-
-// ===== DRAW =====
-function y(top, slot){
-  return top + (10-slot)*5;
-}
-
-function staff(ctx, top){
+function drawLines(ctx,top){
+  ctx.strokeStyle=C_LINE; ctx.lineWidth=1.2;
   for(let i=0;i<5;i++){
-    ctx.beginPath();
-    ctx.moveTo(50, top+i*10);
-    ctx.lineTo(550, top+i*10);
-    ctx.stroke();
+    const y=top+i*LG;
+    ctx.beginPath(); ctx.moveTo(ML,y); ctx.lineTo(CW-MR,y); ctx.stroke();
   }
 }
 
-function note(ctx,x,y){
-  ctx.beginPath();
-  ctx.ellipse(x,y,8,5,0,0,Math.PI*2);
-  ctx.stroke();
+function drawLedger(ctx,x,top,slot){
+  if(slot!==0 && slot!==12) return;
+  ctx.strokeStyle=C_LINE; ctx.lineWidth=1.2;
+  const y=slotY(top,slot);
+  ctx.beginPath(); ctx.moveTo(x-NRX-6,y); ctx.lineTo(x+NRX+6,y); ctx.stroke();
 }
 
-function draw(){
-  const c=document.getElementById("staffCanvas");
-  const ctx=c.getContext("2d");
+function drawNote(ctx,x,y,color){
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.ellipse(x,y,NRX,NRY,-0.25,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#fff";
+  ctx.beginPath(); ctx.ellipse(x,y,NHX,NHY,-0.3,0,Math.PI*2); ctx.fill();
+}
 
-  ctx.clearRect(0,0,600,260);
-
-  const tTop=40;
-  const bTop=140;
-
-  staff(ctx,tTop);
-  staff(ctx,bTop);
-
-  state.q.t.forEach(n=>{
-    note(ctx,300,y(tTop,TN[n]));
-  });
-
-  state.q.b.forEach(n=>{
-    note(ctx,300,y(bTop,BN[n]));
+function drawNotes(ctx,top,keys,noteMap,color){
+  keys.forEach(k=>{
+    const slot=noteMap[k];
+    drawLedger(ctx,CX,top,slot);
+    drawNote(ctx,CX,slotY(top,slot),color);
   });
 }
 
-// ===== INIT =====
-newQ();
+/*
+  Draw key signature accidentals on one staff.
+  letters = ["F","C"] etc., type="sharp"|"flat"
+  slotMap = T_SHARP etc., x0 = start x
+*/
+function drawKeySig(ctx,top,letters,type,slotMap,x0){
+  ctx.fillStyle=C_LINE; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.font = type==="sharp" ? "bold 14px serif" : "bold 17px serif";
+  const glyph = type==="sharp" ? "♯" : "♭";
+  letters.forEach((lt,i)=>{
+    const slot=slotMap[lt];
+    if(slot==null) return;
+    ctx.fillText(glyph, x0+i*13, slotY(top,slot));
+  });
+}
+
+function render(q){
+  const cv=document.getElementById("staffCanvas");
+  const ctx=cv.getContext("2d");
+  ctx.clearRect(0,0,CW,CH);
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,CW,CH);
+
+  drawLines(ctx,TTOP); drawLines(ctx,BTOP);
+
+  // Brace
+  ctx.fillStyle=C_LINE; ctx.font="bold 92px serif"; ctx.textBaseline="top"; ctx.textAlign="left";
+  ctx.fillText("{", 2, TTOP-2);
+
+  // Barlines
+  ctx.strokeStyle=C_LINE; ctx.lineWidth=1.6;
+  const bot=BTOP+4*LG;
+  [ML,CW-MR].forEach(x=>{ ctx.beginPath(); ctx.moveTo(x,TTOP); ctx.lineTo(x,bot); ctx.stroke(); });
+
+  // Clefs
+  ctx.fillStyle=C_LINE; ctx.textAlign="left";
+  ctx.font="bold 52px serif"; ctx.textBaseline="middle";
+  ctx.fillText("𝄞", 14, TTOP+LG*2.3);
+  ctx.font="bold 36px serif";
+  ctx.fillText("𝄢", 16, BTOP+LG*1.5);
+
+  // Key signatures (drawn between clef and note area)
+  const ks=q.keySig, KX=54;
+  if(ks.sharps.length){
+    drawKeySig(ctx,TTOP,ks.sharps,"sharp",T_SHARP,KX);
+    drawKeySig(ctx,BTOP,ks.sharps,"sharp",B_SHARP,KX);
+  } else if(ks.flats.length){
+    drawKeySig(ctx,TTOP,ks.flats,"flat",T_FLAT,KX);
+    drawKeySig(ctx,BTOP,ks.flats,"flat",B_FLAT,KX);
+  }
+
+  // Chord notes
+  drawNotes(ctx,TTOP,q.voicing.t,TN,C_OR);
+  drawNotes(ctx,BTOP,q.voicing.b,BN,C_SG);
+}
+
+/* ── TIMER ───────────────────────────────────────────────── */
+let timerInt=null, timerSec=0;
+function timerStart(){
+  timerStop(); timerSec=0;
+  timerInt=setInterval(()=>{
+    timerSec++;
+    const m=Math.floor(timerSec/60), s=timerSec%60;
+    const el=document.getElementById("statTimer");
+    el.textContent=m+":"+(s<10?"0":"")+s;
+    el.classList.toggle("timer-warn",timerSec>30);
+  },1000);
+}
+function timerStop(){ if(timerInt){ clearInterval(timerInt); timerInt=null; } }
+
+/* ── APP ─────────────────────────────────────────────────── */
+let state={ level:1, q:null, qNum:1, passed:0, revealed:false };
+const $=id=>document.getElementById(id);
+
+function setLevel(lv){
+  state.level=lv; state.qNum=1; state.passed=0;
+  $("statLevel").textContent=lv; $("statPass").textContent=0;
+  document.querySelectorAll(".lvl-btn").forEach(b=>b.classList.toggle("active",+b.dataset.level===lv));
+  loadQ();
+}
+
+function loadQ(){
+  state.q=safeGen(state.level); state.revealed=false;
+  render(state.q);
+
+  // Key sig badge
+  const ks=state.q.keySig;
+  if(ks.sharps.length||ks.flats.length){
+    $("keyBadge").style.display="flex"; $("keyName").textContent=ks.name;
+  } else {
+    $("keyBadge").style.display="none";
+  }
+
+  const lbl=$("lblChord");
+  lbl.textContent="?"; lbl.className="lbl-chord hidden";
+  $("statQ").textContent=state.qNum;
+  $("btnReveal").disabled=false; $("btnPass").disabled=true;
+  $("passBadge").classList.remove("visible");
+  timerStart();
+}
+
+function reveal(){
+  if(state.revealed) return;
+  state.revealed=true; timerStop();
+  const lbl=$("lblChord");
+  lbl.textContent=state.q.chord.name; lbl.className="lbl-chord revealed";
+  $("btnReveal").disabled=true; $("btnPass").disabled=false;
+}
+
+function pass(){
+  state.passed++; $("statPass").textContent=state.passed;
+  $("passBadge").classList.add("visible"); $("btnPass").disabled=true;
+}
+
+function nextQ(){ state.qNum++; loadQ(); }
+
+document.querySelectorAll(".lvl-btn").forEach(b=>b.addEventListener("click",()=>setLevel(+b.dataset.level)));
+$("btnReveal").addEventListener("click",reveal);
+$("btnPass").addEventListener("click",pass);
+$("btnNext").addEventListener("click",nextQ);
+document.addEventListener("keydown",e=>{
+  if(e.key===" "||e.key==="Spacebar"){ e.preventDefault(); if(!state.revealed) reveal(); }
+  if(e.key==="Enter"||e.key==="ArrowRight") nextQ();
+  if((e.key==="p"||e.key==="P")&&state.revealed&&!$("btnPass").disabled) pass();
+});
+
+loadQ();
 </script>
-
 </body>
 </html>
